@@ -63,7 +63,9 @@ Example of BLIF half-adder. Note that we describe each output of half-adder in t
 
 The BLIF parsing and construction of a DAG representing the circuit will be done in Python. To use the parser, do the following:
 
-`synth.py <file.blif>`
+`synth.py <file.blif> --model <model name>`
+
+Note that the model flag is optional. If model flag is not included, it will try to synthesize the first model that appears in the BLIF. If no model is defined (and only .names is), then the first .names that appears in the BLIF will be simulated.
 
 This will do two things:
 
