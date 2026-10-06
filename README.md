@@ -28,7 +28,7 @@ Similar to "input" and "output" in Verilog.
 
 Instantiate a model within another model. You can define the model wherever in the BLIF file.
 
-- `.names <in0> <in1> <out> 
+- `.names <in0> <in1> <out>` 
 
 This will define a boolean expression. We will only allow for SOP definition.
 
@@ -92,6 +92,7 @@ These metrics will be output to a file called `metrics.txt`.
 
 ### 3. Project Hierarchy
 
+```
 .
 ├── README.md
 ├── src
@@ -101,6 +102,7 @@ These metrics will be output to a file called `metrics.txt`.
 │   └── verilate
 ├── startup.sh
 └── test_BLIF
+```
 
 The main script to run the program is `synth.py`, contained in src. `startup.sh` should create a Python environment and install any necessary packages before running the program using bash. Our custom modules for this program are split among minimizer, parser, and verilate. 
 
