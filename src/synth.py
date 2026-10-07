@@ -71,12 +71,8 @@ if __name__ == "__main__":
     metricsOutput = cktDAG.formatMetrics()
     with metricsFile.open("w", encoding="utf-8") as f:
         f.write(metricsOutput)
-    # also write top-level metrics.txt for reference
-    with open("metrics.txt", "w", encoding="utf-8") as f:
-        f.write(metricsOutput)
     print(f"Metrics written to {metricsFile}")
 
     # step 5: output structural verilog
     vrt.writeVerilog(cktDAG.inputs, cktDAG.outputs, cktDAG.metrics, verilogFile, module_name="top")
-    vrt.writeVerilog(cktDAG.inputs, cktDAG.outputs, cktDAG.metrics, Path("top.v"), module_name="top")
     print(f"Structural Verilog written to {verilogFile}")
