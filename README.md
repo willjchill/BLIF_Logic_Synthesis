@@ -125,7 +125,7 @@ Features:
 - **Target Part**: `xc7a100tcsg324-1` (Artix-7, Package `csg324`, Speed `-1`).
 - **Constraints**: Generates `auto_pins.xdc` inside the Verilog run directory referencing board pins from `output/verilog/Nexys4DDR_Master.xdc`.
 - **Hardware Programming**: Connects to the Vivado Hardware Manager and automatically programs connected FPGA hardware.
-- **Reporting**: Logs full execution status, debug details, and FPGA I/O pin mappings to `output/fpga/report_<timestamp>.log`.
+- **Reporting**: Logs full execution status, debug details, FPGA I/O pin mappings, post-synthesis timing & power reports, and post-implementation timing & power reports to `output/fpga/report_<timestamp>.log`.
 
 ### 2.6. Fast Bitstream Programming (Skipping Synthesis)
 

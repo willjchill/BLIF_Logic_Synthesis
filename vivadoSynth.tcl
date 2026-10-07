@@ -8,7 +8,8 @@ fi
 
 # ==============================================================================
 # vivadoSynth.tcl
-# Automated Vivado Synthesis, Implementation, Bitstream, and Programming flow
+# Automated Vivado Synthesis, Implementation, Timing/Power Analysis, Bitstream,
+# and Programming flow
 #
 # Target Part Specification:
 #   Product category: All
@@ -228,12 +229,25 @@ set report_file [file join $fpga_dir "report_${ts}.log"]
 # ------------------------------------------------------------------------------
 set in_vivado [expr {[llength [info commands synth_design]] > 0}]
 set synth_status "NOT_RUN"
+set synth_timing_status "NOT_RUN"
+set synth_power_status "NOT_RUN"
 set impl_status "NOT_RUN"
+set impl_timing_status "NOT_RUN"
+set impl_power_status "NOT_RUN"
 set bit_status "NOT_RUN"
 set hw_status "NOT_RUN"
 set overall_status "SUCCESS"
 set debug_log {}
 set bitstream_file [file join $target_dir "top.bit"]
+set post_synth_timing_file [file join $target_dir "post_synth_timing.rpt"]
+set post_synth_power_file [file join $target_dir "post_synth_power.rpt"]
+set post_impl_timing_file [file join $target_dir "post_impl_timing.rpt"]
+set post_impl_power_file [file join $target_dir "post_impl_power.rpt"]
+
+set post_synth_timing_rpt ""
+set post_synth_power_rpt ""
+set post_impl_timing_rpt ""
+set post_impl_power_rpt ""
 
 if {$in_vivado} {
     puts "================================================================================"
@@ -254,6 +268,52 @@ if {$in_vivado} {
         lappend debug_log "synth_design error: $err"
     }
 
+    # Step 8.1.1: Post-Synthesis Timing and Power Reports
+    if {$synth_status eq "SUCCESS"} {
+        puts "INFO: Generating post-synthesis timing report..."
+        if {[catch {
+            report_timing_summary -file $post_synth_timing_file -report_unconstrained -max_paths 10
+            if {[file exists $post_synth_timing_file]} {
+                set fp [open $post_synth_timing_file r]
+                set post_synth_timing_rpt [read $fp]
+                close $fp
+                set synth_timing_status "SUCCESS"
+                lappend debug_log "Post-synthesis timing report generated: $post_synth_timing_file"
+            } else {
+                set post_synth_timing_rpt "Report file not created."
+                set synth_timing_status "FAILED (File not found)"
+            }
+        } err]} {
+            set synth_timing_status "FAILED"
+            set post_synth_timing_rpt "Error generating post-synthesis timing report: $err"
+            lappend debug_log "Post-synthesis timing error: $err"
+        }
+
+        puts "INFO: Generating post-synthesis power report..."
+        if {[catch {
+            report_power -file $post_synth_power_file
+            if {[file exists $post_synth_power_file]} {
+                set fp [open $post_synth_power_file r]
+                set post_synth_power_rpt [read $fp]
+                close $fp
+                set synth_power_status "SUCCESS"
+                lappend debug_log "Post-synthesis power report generated: $post_synth_power_file"
+            } else {
+                set post_synth_power_rpt "Report file not created."
+                set synth_power_status "FAILED (File not found)"
+            }
+        } err]} {
+            set synth_power_status "FAILED"
+            set post_synth_power_rpt "Error generating post-synthesis power report: $err"
+            lappend debug_log "Post-synthesis power error: $err"
+        }
+    } else {
+        set synth_timing_status "SKIPPED"
+        set synth_power_status "SKIPPED"
+        set post_synth_timing_rpt "Post-synthesis timing report skipped due to synthesis failure."
+        set post_synth_power_rpt "Post-synthesis power report skipped due to synthesis failure."
+    }
+
     # Step 8.2: Implementation
     if {$synth_status eq "SUCCESS"} {
         if {[catch {
@@ -269,6 +329,52 @@ if {$in_vivado} {
         }
     } else {
         set impl_status "SKIPPED"
+    }
+
+    # Step 8.2.1: Post-Implementation Timing and Power Reports
+    if {$impl_status eq "SUCCESS"} {
+        puts "INFO: Generating post-implementation timing report..."
+        if {[catch {
+            report_timing_summary -file $post_impl_timing_file -report_unconstrained -max_paths 10
+            if {[file exists $post_impl_timing_file]} {
+                set fp [open $post_impl_timing_file r]
+                set post_impl_timing_rpt [read $fp]
+                close $fp
+                set impl_timing_status "SUCCESS"
+                lappend debug_log "Post-implementation timing report generated: $post_impl_timing_file"
+            } else {
+                set post_impl_timing_rpt "Report file not created."
+                set impl_timing_status "FAILED (File not found)"
+            }
+        } err]} {
+            set impl_timing_status "FAILED"
+            set post_impl_timing_rpt "Error generating post-implementation timing report: $err"
+            lappend debug_log "Post-implementation timing error: $err"
+        }
+
+        puts "INFO: Generating post-implementation power report..."
+        if {[catch {
+            report_power -file $post_impl_power_file
+            if {[file exists $post_impl_power_file]} {
+                set fp [open $post_impl_power_file r]
+                set post_impl_power_rpt [read $fp]
+                close $fp
+                set impl_power_status "SUCCESS"
+                lappend debug_log "Post-implementation power report generated: $post_impl_power_file"
+            } else {
+                set post_impl_power_rpt "Report file not created."
+                set impl_power_status "FAILED (File not found)"
+            }
+        } err]} {
+            set impl_power_status "FAILED"
+            set post_impl_power_rpt "Error generating post-implementation power report: $err"
+            lappend debug_log "Post-implementation power error: $err"
+        }
+    } else {
+        set impl_timing_status "SKIPPED"
+        set impl_power_status "SKIPPED"
+        set post_impl_timing_rpt "Post-implementation timing report skipped ($impl_status)."
+        set post_impl_power_rpt "Post-implementation power report skipped ($impl_status)."
     }
 
     # Step 8.3: Write Bitstream
@@ -324,10 +430,18 @@ if {$in_vivado} {
 } else {
     # Plain Tclsh environment (pre-synthesis / verification mode)
     set synth_status "NOT_RUN (Tclsh mode)"
+    set synth_timing_status "NOT_RUN (Tclsh mode)"
+    set synth_power_status "NOT_RUN (Tclsh mode)"
     set impl_status "NOT_RUN (Tclsh mode)"
+    set impl_timing_status "NOT_RUN (Tclsh mode)"
+    set impl_power_status "NOT_RUN (Tclsh mode)"
     set bit_status "NOT_RUN (Tclsh mode)"
     set hw_status "NOT_RUN (Tclsh mode)"
     set overall_status "CONSTRAINTS GENERATED (READY FOR VIVADO)"
+    set post_synth_timing_rpt "Report not generated in Tclsh pre-synthesis mode.\nRun in Vivado batch mode to synthesize and generate timing reports:\n    vivado -mode batch -source vivadoSynth.tcl -tclargs --output_dir $target_dir"
+    set post_synth_power_rpt "Report not generated in Tclsh pre-synthesis mode.\nRun in Vivado batch mode to synthesize and generate power reports:\n    vivado -mode batch -source vivadoSynth.tcl -tclargs --output_dir $target_dir"
+    set post_impl_timing_rpt "Report not generated in Tclsh pre-synthesis mode.\nRun in Vivado batch mode to implement and generate timing reports:\n    vivado -mode batch -source vivadoSynth.tcl -tclargs --output_dir $target_dir"
+    set post_impl_power_rpt "Report not generated in Tclsh pre-synthesis mode.\nRun in Vivado batch mode to implement and generate power reports:\n    vivado -mode batch -source vivadoSynth.tcl -tclargs --output_dir $target_dir"
     lappend debug_log "Script executed in Tclsh mode. Pin constraints generated successfully."
     lappend debug_log "To execute full synthesis, implementation, and bitstream generation in Vivado, run:"
     lappend debug_log "    vivado -mode batch -source vivadoSynth.tcl -tclargs --output_dir $target_dir"
@@ -352,11 +466,23 @@ puts $rpt "Target Part:      xc7a100tcsg324-1"
 puts $rpt "Board:            Digilent Nexys 4 DDR Rev. C"
 puts $rpt ""
 puts $rpt "--- DESIGN SOURCES & ARTIFACTS ---"
-puts $rpt "Source Directory: $target_dir"
-puts $rpt "Verilog File:     $top_file"
-puts $rpt "Generated XDC:    $generated_xdc"
+puts $rpt "Source Directory:   $target_dir"
+puts $rpt "Verilog File:       $top_file"
+puts $rpt "Generated XDC:      $generated_xdc"
 if {$bit_status eq "SUCCESS"} {
-    puts $rpt "Bitstream File:   $bitstream_file"
+    puts $rpt "Bitstream File:     $bitstream_file"
+}
+if {[file exists $post_synth_timing_file]} {
+    puts $rpt "Post-Synth Timing:  $post_synth_timing_file"
+}
+if {[file exists $post_synth_power_file]} {
+    puts $rpt "Post-Synth Power:   $post_synth_power_file"
+}
+if {[file exists $post_impl_timing_file]} {
+    puts $rpt "Post-Impl Timing:   $post_impl_timing_file"
+}
+if {[file exists $post_impl_power_file]} {
+    puts $rpt "Post-Impl Power:    $post_impl_power_file"
 }
 puts $rpt ""
 puts $rpt "================================================================================"
@@ -375,12 +501,38 @@ foreach m $mapping_table {
 puts $rpt "================================================================================"
 puts $rpt ""
 puts $rpt "--- FLOW EXECUTION SUMMARY ---"
-puts $rpt "Synthesis:       $synth_status"
-puts $rpt "Implementation:  $impl_status"
-puts $rpt "Bitstream:       $bit_status"
-puts $rpt "FPGA Program:    $hw_status"
+puts $rpt [format "%-24s %s" "Synthesis:" $synth_status]
+puts $rpt [format "%-24s %s" "Post-Synth Timing:" $synth_timing_status]
+puts $rpt [format "%-24s %s" "Post-Synth Power:" $synth_power_status]
+puts $rpt [format "%-24s %s" "Implementation:" $impl_status]
+puts $rpt [format "%-24s %s" "Post-Impl Timing:" $impl_timing_status]
+puts $rpt [format "%-24s %s" "Post-Impl Power:" $impl_power_status]
+puts $rpt [format "%-24s %s" "Bitstream:" $bit_status]
+puts $rpt [format "%-24s %s" "FPGA Program:" $hw_status]
 puts $rpt ""
-puts $rpt "--- DEBUG & EXECUTION LOG ---"
+puts $rpt "================================================================================"
+puts $rpt "                    POST-SYNTHESIS TIMING REPORT                                "
+puts $rpt "================================================================================"
+puts $rpt [string trim $post_synth_timing_rpt]
+puts $rpt ""
+puts $rpt "================================================================================"
+puts $rpt "                     POST-SYNTHESIS POWER REPORT                                "
+puts $rpt "================================================================================"
+puts $rpt [string trim $post_synth_power_rpt]
+puts $rpt ""
+puts $rpt "================================================================================"
+puts $rpt "                  POST-IMPLEMENTATION TIMING REPORT                             "
+puts $rpt "================================================================================"
+puts $rpt [string trim $post_impl_timing_rpt]
+puts $rpt ""
+puts $rpt "================================================================================"
+puts $rpt "                   POST-IMPLEMENTATION POWER REPORT                             "
+puts $rpt "================================================================================"
+puts $rpt [string trim $post_impl_power_rpt]
+puts $rpt ""
+puts $rpt "================================================================================"
+puts $rpt "                        DEBUG & EXECUTION LOG                                   "
+puts $rpt "================================================================================"
 if {[llength $debug_log] > 0} {
     foreach d $debug_log {
         puts $rpt "  $d"
