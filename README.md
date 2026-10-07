@@ -105,7 +105,6 @@ These metrics will be output to a file called `metrics.txt`.
 │       ├── logicDAG.py
 │       ├── sopMin.py
 │       └── verilate.py
-├── startup.sh
 └── test_BLIF
     └── halfAdder.blif
 ```

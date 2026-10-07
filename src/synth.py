@@ -1,6 +1,20 @@
-import parser.blifParser as prs
 import argparse
+import sys
+from datetime import datetime
 from pathlib import Path
+
+# Add src and src/utils to path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "utils"))
+
+try:
+    import utils.blifParser as prs
+    import utils.logicDAG as ld
+    import utils.verilate as vrt
+except ImportError:
+    import blifParser as prs
+    import logicDAG as ld
+    import verilate as vrt
 
 if __name__ == "__main__":
     # step 1: parse command line
@@ -18,16 +32,51 @@ if __name__ == "__main__":
     if args.input_file.name[-5:] != ".blif":
         raise ValueError("File must contain .blif extension.") 
 
-    print(args.input_file, type(args.input_file))
-    print(args.model)
-
     # step 2: parse blif file
-    with args.input_file.open("r", encoding="utf-8") as file:
-        for line in file:
-            print(line.rstrip("\n"))
+    commandList = prs.getCommandList(args.input_file)
+    modelList = prs.modelListConstructor(commandList)
+
+    if args.model:
+        if args.model not in modelList:
+            raise ValueError(f"Model '{args.model}' not found in BLIF file.")
+        selectedModel = modelList[args.model]
+    elif modelList:
+        selectedModel = next(iter(modelList.values()))
+    else:
+        raise ValueError("No models found in BLIF file.")
+
+    # flatten subcircuits into gates
+    selectedModel.flattenModel(modelList)
 
     # step 3: build DAG 
+    cktDAG = ld.TopCktDAG(selectedModel.inputs, selectedModel.outputs)
+    cktDAG.model2DAG(selectedModel)
+
+    # Output directory setup
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    moduleName = selectedModel.name if selectedModel.name else "top"
+
+    projectRoot = Path(__file__).resolve().parent.parent
+    outputDir = projectRoot / "output"
+    metricsDir = outputDir / "metrics"
+    verilogDir = outputDir / "verilog"
+    metricsDir.mkdir(parents=True, exist_ok=True)
+    verilogDir.mkdir(parents=True, exist_ok=True)
+
+    metricsFile = metricsDir / f"metrics_{moduleName}_{timestamp}.txt"
+    verilogFile = verilogDir / f"top_{timestamp}.v"
 
     # step 4: report metrics
+    cktDAG.evalMetrics()
+    metricsOutput = cktDAG.formatMetrics()
+    with metricsFile.open("w", encoding="utf-8") as f:
+        f.write(metricsOutput)
+    # also write top-level metrics.txt for reference
+    with open("metrics.txt", "w", encoding="utf-8") as f:
+        f.write(metricsOutput)
+    print(f"Metrics written to {metricsFile}")
 
     # step 5: output structural verilog
+    vrt.writeVerilog(cktDAG.inputs, cktDAG.outputs, cktDAG.metrics, verilogFile, module_name="top")
+    vrt.writeVerilog(cktDAG.inputs, cktDAG.outputs, cktDAG.metrics, Path("top.v"), module_name="top")
+    print(f"Structural Verilog written to {verilogFile}")

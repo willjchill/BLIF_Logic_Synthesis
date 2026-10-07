@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output files
+*.txt
+*.v
+metrics.txt
+top.v
+output/metrics/*.txt
+output/verilog/*.v
+
+# Keep directory structure
+!output/metrics/.gitkeep
+!output/verilog/.gitkeep
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
