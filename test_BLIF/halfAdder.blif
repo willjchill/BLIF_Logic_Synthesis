@@ -1,0 +1,14 @@
+.model half_adder 
+.inputs a b
+.outputs sum cout
+
+# SOP for sum
+.names a b sum 
+01 1
+10 1
+
+# SOP for carry out bit 
+.names a b cout
+11 1
+
+.end

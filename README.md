@@ -22,7 +22,7 @@ Similar to "module" in Verilog.
 
 - `.{inputs/outputs} <pinName_0> <pinName_1> .. <pinName_N>`
 
-Similar to "input" and "output" in Verilog.
+Similar to "input" and "output" in Verilog. All module and I/O names should be unique. If there is a duplicate, an error will be raised.
 
 - `.subckt <in0> <in1> ... <inN> <out0> <out1> ... <outN>`
 
@@ -61,9 +61,9 @@ Example of BLIF half-adder. Note that we describe each output of half-adder in t
 
 ### 2.2. Python Parser Usage
 
-The BLIF parsing and construction of a DAG representing the circuit will be done in Python. To use the parser, do the following:
+The BLIF parsing and construction of a std data structure representing the circuit will be done in Python. To use the parser, do the following:
 
-`synth.py <file.blif> --model <model name>`
+`python3 synth.py <file.blif> --model <model name>`
 
 Note that the model flag is optional. If model flag is not included, it will try to synthesize the first model that appears in the BLIF. If no model is defined (and only .names is), then the first .names that appears in the BLIF will be simulated.
 
@@ -108,11 +108,11 @@ These metrics will be output to a file called `metrics.txt`.
 
 The main script to run the program is `synth.py`, contained in src. `startup.sh` should create a Python environment and install any necessary packages before running the program using bash. Our custom modules for this program are split among minimizer, parser, and verilate. 
 
-- **Minimizer** contains modules for DAG representation of logic as well as various methods of minimizing logic such as QM. 
+- **Minimizer** contains modules for circuit representation of logic as well as various methods of minimizing logic such as QM. 
 
 - **Parser** contains modules to parse constrained BLIF files. 
 
-- **Verilate** contains conversion from DAG representation to structural Verilog.
+- **Verilate** contains conversion from circuit representation to structural Verilog.
 
 ----------------------------------------------------------------------------------------
 
