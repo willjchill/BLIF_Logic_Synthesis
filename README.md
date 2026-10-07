@@ -63,15 +63,15 @@ Example of BLIF half-adder. Note that we describe each output of half-adder in t
 
 The BLIF parsing and construction of a std data structure representing the circuit will be done in Python. To use the parser, do the following:
 
-`python3 synth.py <file.blif> --model <model name>`
+`python3 src/synth.py <file.blif> --model <model name>`
 
 Note that the model flag is optional. If model flag is not included, it will try to synthesize the first model that appears in the BLIF. If no model is defined (and only .names is), then the first .names that appears in the BLIF will be simulated.
 
 This will do two things:
 
-A. Generate a standard output for various metrics (described more in section 2.3).
+A. Generate a standard output for various metrics saved under `output/metrics/` (and `metrics.txt`).
 
-B. Generate a valid structural Verilog file that can be synthesized and implemented on any FPGA. The verilog file will be called `top.v` for simplicity. All of the subcircuits defined in the BLIF will be inlined to the top module during parsing and logic synthesis.
+B. Generate a valid structural Verilog file saved under `output/verilog/` (and `top.v`) that can be synthesized and implemented on any FPGA. All of the subcircuits defined in the BLIF will be inlined to the top module during parsing and logic synthesis.
 
 ### 2.3. Output Metrics Reported
 
@@ -87,29 +87,33 @@ B. Generate a valid structural Verilog file that can be synthesized and implemen
 8. Essential Prime Implicants: Report the total count of Essential Prime Implicants.
 9. ON-Set Minterms: Report the total number of ON-Set minterms (Σ𝑚).
 10. OFF-Set Maxterms: Report the total number of OFF-Set maxterms (Π𝑀).
-11. Custom Command #1: A feature/command of your choice (e.g., hazard detection, delay estimation, XOR/XNOR factorization, truth table exporter).
-12. Custom Command #2: A second feature/command of your choice.
+11. Custom Command #1: Delay Estimation (circuit logic depth in gate levels).
+12. Custom Command #2: Truth Table Exporter (complete input-output truth table).
 
-These metrics will be output to a file called `metrics.txt`. 
+These metrics will be output to a file called `output/metrics/metrics_<model>_<timestamp>.txt` (as well as `metrics.txt`). 
 
 ### 3. Project Hierarchy
 
 ```
 .
 ├── README.md
+├── .gitignore
+├── output
+│   ├── metrics
+│   └── verilog
 ├── src
 │   ├── synth.py
 │   └── utils
-│       ├── __pycache__
 │       ├── blifParser.py
 │       ├── logicDAG.py
 │       ├── sopMin.py
 │       └── verilate.py
 └── test_BLIF
+    ├── fullAdder.blif
     └── halfAdder.blif
 ```
 
-The main script to run the program is `synth.py`, contained in src. `startup.sh` should create a Python environment and install any necessary packages before running the program using bash. Our custom modules for this program are split among minimizer, parser, and verilate. 
+The main script to run the program is `synth.py`, contained in src. It uses only default Python standard library packages and requires no external dependencies. Our custom modules for this program are split among minimizer, parser, and verilate. 
 
 - **logicDAG / sopMIN** contains modules for circuit representation of logic as well as various methods of minimizing logic such as QM. 
 
@@ -119,6 +123,6 @@ The main script to run the program is `synth.py`, contained in src. `startup.sh`
 
 ----------------------------------------------------------------------------------------
 
-Last Updated 10/6/2026
+Last Updated 10/7/2026
 
 **Based off of Boston University's EC551 - Programming Assignment 1**
