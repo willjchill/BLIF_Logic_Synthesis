@@ -127,6 +127,19 @@ Features:
 - **Hardware Programming**: Connects to the Vivado Hardware Manager and automatically programs connected FPGA hardware.
 - **Reporting**: Logs full execution status, debug details, and FPGA I/O pin mappings to `output/fpga/report_<timestamp>.log`.
 
+### 2.6. Fast Bitstream Programming (Skipping Synthesis)
+
+Since synthesis and implementation can take several minutes, use `vivadoBitstream.tcl` to quickly send an already-generated bitstream directly to the FPGA hardware:
+
+```bash
+# Automatically finds and sends the most recently generated bitstream:
+vivado -mode batch -source vivadoBitstream.tcl
+
+# Or specify a specific directory or bitstream:
+vivado -mode batch -source vivadoBitstream.tcl -tclargs --output_dir output/verilog/<model>_<timestamp>
+vivado -mode batch -source vivadoBitstream.tcl -tclargs --bitstream output/verilog/<model>_<timestamp>/top.bit
+```
+
 ### 3. Project Hierarchy
 
 ```
@@ -134,9 +147,11 @@ Features:
 ├── README.md
 ├── .gitignore
 ├── vivadoSynth.tcl
+├── vivadoBitstream.tcl
 ├── output
 │   ├── fpga
-│   │   └── report_<timestamp>.log
+│   │   ├── report_<timestamp>.log
+│   │   └── program_<timestamp>.log
 │   ├── metrics
 │   │   └── metrics_<model>_<timestamp>.txt
 │   └── verilog
@@ -166,7 +181,10 @@ The main script to run the program is `synth.py`, contained in src. It uses only
 
 - **verilate** contains conversion from circuit representation to structural Verilog and simulation testbench generation.
 
-- **vivadoSynth.tcl** automates Vivado FPGA synthesis, implementation, bitstream generation, and hardware programming for the Nexys 4 DDR board.
+- **vivadoSynth.tcl** automates full Vivado FPGA synthesis, implementation, bitstream generation, and hardware programming for the Nexys 4 DDR board.
+
+- **vivadoBitstream.tcl** provides fast, standalone bitstream programming directly to the FPGA hardware, skipping synthesis and implementation.
+
 
 
 ----------------------------------------------------------------------------------------
