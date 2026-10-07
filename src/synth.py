@@ -60,11 +60,13 @@ if __name__ == "__main__":
     outputDir = projectRoot / "output"
     metricsDir = outputDir / "metrics"
     verilogDir = outputDir / "verilog"
+    verilogRunDir = verilogDir / f"{moduleName}_{timestamp}"
     metricsDir.mkdir(parents=True, exist_ok=True)
-    verilogDir.mkdir(parents=True, exist_ok=True)
+    verilogRunDir.mkdir(parents=True, exist_ok=True)
 
     metricsFile = metricsDir / f"metrics_{moduleName}_{timestamp}.txt"
-    verilogFile = verilogDir / f"top_{timestamp}.v"
+    verilogFile = verilogRunDir / f"top_{timestamp}.v"
+    tbFile = verilogRunDir / f"tb_top_{timestamp}.v"
 
     # step 4: report metrics
     cktDAG.evalMetrics()
@@ -73,6 +75,10 @@ if __name__ == "__main__":
         f.write(metricsOutput)
     print(f"Metrics written to {metricsFile}")
 
-    # step 5: output structural verilog
+    # step 5: output structural verilog and simulation testbench
     vrt.writeVerilog(cktDAG.inputs, cktDAG.outputs, cktDAG.metrics, verilogFile, module_name="top")
     print(f"Structural Verilog written to {verilogFile}")
+
+    vrt.writeTestbench(cktDAG.inputs, cktDAG.outputs, cktDAG.metrics, tbFile, module_name="top", timestamp=timestamp)
+    print(f"Simulation testbench written to {tbFile}")
+

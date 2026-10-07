@@ -111,3 +111,152 @@ def writeVerilog(inputs: list[str], outputs: list[str], metrics: dict, filePath:
     code = generateVerilog(inputs, outputs, metrics, module_name)
     with filePath.open("w", encoding="utf-8") as f:
         f.write(code)
+
+
+"""
+    Generates Verilog testbench simulating all combinations of inputs,
+    asserting outputs against canonical SOP golden logic, and dumping waveform.
+"""
+def generateTestbench(inputs: list[str], outputs: list[str], metrics: dict, module_name: str = "top", timestamp: str = "") -> str:
+    n_in = len(inputs)
+    n_out = len(outputs)
+    total_comb = 1 << n_in
+
+    tb_lines = []
+    tb_lines.append("`timescale 1ns/1ps")
+    tb_lines.append("")
+    tb_lines.append(f"// Simulation testbench for {module_name}")
+    tb_lines.append("// Probes all 2^N combinations against canonical SOP golden logic")
+    if timestamp:
+        tb_lines.append(f"// Timestamp: {timestamp}")
+    tb_lines.append("")
+    tb_lines.append("module tb_top;")
+    tb_lines.append("")
+    tb_lines.append("    // Inputs to DUT")
+    for inp in inputs:
+        tb_lines.append(f"    reg {inp};")
+    tb_lines.append("")
+    tb_lines.append("    // Outputs from DUT")
+    for out in outputs:
+        tb_lines.append(f"    wire {out};")
+    tb_lines.append("")
+    tb_lines.append("    // Golden expected outputs")
+    for out in outputs:
+        tb_lines.append(f"    reg {out}_expected;")
+    tb_lines.append("")
+    tb_lines.append("    // Test tracking")
+    tb_lines.append("    integer total_tests = 0;")
+    tb_lines.append("    integer failed_tests = 0;")
+    tb_lines.append("")
+    tb_lines.append(f"    // Instantiate Device Under Test ({module_name})")
+    tb_lines.append(f"    {module_name} dut (")
+    port_maps = [f"        .{p}({p})" for p in inputs + outputs]
+    tb_lines.append(",\n".join(port_maps))
+    tb_lines.append("    );")
+    tb_lines.append("")
+
+    # Task to check a vector
+    in_vec_decl = f"input [{n_in - 1}:0] in_vec" if n_in > 1 else "input [0:0] in_vec"
+    exp_vec_decl = f"input [{n_out - 1}:0] exp_vec" if n_out > 1 else "input [0:0] exp_vec"
+    in_unpack = f"{{{', '.join(inputs)}}}" if n_in > 1 else inputs[0]
+    exp_unpack = f"{{{', '.join(f'{out}_expected' for out in outputs)}}}" if n_out > 1 else f"{outputs[0]}_expected"
+
+    tb_lines.append("    // Task to apply vector, check assertions, and log results")
+    tb_lines.append("    task check_vector(")
+    tb_lines.append(f"        {in_vec_decl},")
+    tb_lines.append(f"        {exp_vec_decl}")
+    tb_lines.append("    );")
+    tb_lines.append("    begin")
+    tb_lines.append(f"        {in_unpack} = in_vec;")
+    tb_lines.append(f"        {exp_unpack} = exp_vec;")
+    tb_lines.append("        #10;")
+    tb_lines.append("        total_tests = total_tests + 1;")
+    tb_lines.append("")
+
+    for out in outputs:
+        tb_lines.append(f"        assert ({out} === {out}_expected) else begin")
+        tb_lines.append(f"            $error(\"ASSERTION FAILED at %0t for {out}: inputs=%b, expected %b, got %b\", $time, in_vec, {out}_expected, {out});")
+        tb_lines.append("            failed_tests = failed_tests + 1;")
+        tb_lines.append("        end")
+
+    tb_lines.append("")
+    pass_cond = " && ".join(f"({out} === {out}_expected)" for out in outputs)
+    inputs_header = ", ".join(inputs)
+    outputs_display = " ".join(f"{out}=%b (exp %b)" for out in outputs)
+    outputs_args = ", ".join([f"{out}, {out}_expected" for out in outputs])
+
+    tb_lines.append(f"        if ({pass_cond}) begin")
+    tb_lines.append(f"            $display(\"[PASS] Time=%0t | Inputs {{{inputs_header}}}=%b | {outputs_display}\", $time, in_vec, {outputs_args});")
+    tb_lines.append("        end else begin")
+    tb_lines.append(f"            $display(\"[FAIL] Time=%0t | Inputs {{{inputs_header}}}=%b | {outputs_display} [MISMATCH]\", $time, in_vec, {outputs_args});")
+    tb_lines.append("        end")
+    tb_lines.append("    end")
+    tb_lines.append("    endtask")
+    tb_lines.append("")
+
+    # Waveform dumping
+    vcd_name = f"tb_top_{timestamp}.vcd" if timestamp else "tb_top.vcd"
+    tb_lines.append("    // Waveform dump for GTKWave")
+    tb_lines.append("    initial begin")
+    tb_lines.append(f'        $dumpfile("{vcd_name}");')
+    tb_lines.append("        $dumpvars(0, tb_top);")
+    tb_lines.append("    end")
+    tb_lines.append("")
+
+    # Stimulus block
+    tb_lines.append("    // Simulation stimulus")
+    tb_lines.append("    initial begin")
+    tb_lines.append("        total_tests = 0;")
+    tb_lines.append("        failed_tests = 0;")
+    tb_lines.append("")
+    tb_lines.append('        $display("================================================================================");')
+    tb_lines.append(f'        $display("STARTING SIMULATION: Testing all {total_comb} input combinations for {module_name}");')
+    tb_lines.append('        $display("================================================================================");')
+    tb_lines.append("")
+
+    for i in range(total_comb):
+        comb = f"{i:0{n_in}b}"
+        exp_bits = []
+        active_outs = []
+        for out in outputs:
+            minterms = set(metrics.get(out, {}).get("Canonical SOP", []))
+            if comb in minterms:
+                exp_bits.append("1")
+                active_outs.append(out)
+            else:
+                exp_bits.append("0")
+        exp_comb = "".join(exp_bits)
+        comment_info = f"// Vector {i}: {inputs_header} = {comb}"
+        if active_outs:
+            comment_info += f" -> ON-set minterm active for ({', '.join(active_outs)})"
+        else:
+            comment_info += " -> OFF-set for all outputs"
+        tb_lines.append(f"        {comment_info}")
+        tb_lines.append(f"        check_vector({n_in}'b{comb}, {n_out}'b{exp_comb});")
+
+    tb_lines.append("")
+    tb_lines.append("        #10;")
+    tb_lines.append('        $display("================================================================================");')
+    tb_lines.append("        if (failed_tests == 0) begin")
+    tb_lines.append('            $display("ALL %0d ASSERTIONS PASSED! Simulation successful.", total_tests);')
+    tb_lines.append("        end else begin")
+    tb_lines.append('            $display("SIMULATION FAILED: %0d / %0d assertions failed.", failed_tests, total_tests);')
+    tb_lines.append("        end")
+    tb_lines.append('        $display("================================================================================");')
+    tb_lines.append("        $finish;")
+    tb_lines.append("    end")
+    tb_lines.append("")
+    tb_lines.append("endmodule")
+    tb_lines.append("")
+
+    return "\n".join(tb_lines)
+
+
+"""
+    Writes simulation testbench to file
+"""
+def writeTestbench(inputs: list[str], outputs: list[str], metrics: dict, filePath: Path, module_name: str = "top", timestamp: str = "") -> None:
+    code = generateTestbench(inputs, outputs, metrics, module_name, timestamp)
+    with filePath.open("w", encoding="utf-8") as f:
+        f.write(code)
+
