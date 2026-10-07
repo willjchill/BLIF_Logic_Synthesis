@@ -98,21 +98,25 @@ These metrics will be output to a file called `metrics.txt`.
 .
 ├── README.md
 ├── src
-│   ├── minimizer
-│   ├── parser
 │   ├── synth.py
-│   └── verilate
+│   └── utils
+│       ├── __pycache__
+│       ├── blifParser.py
+│       ├── logicDAG.py
+│       ├── sopMin.py
+│       └── verilate.py
 ├── startup.sh
 └── test_BLIF
+    └── halfAdder.blif
 ```
 
 The main script to run the program is `synth.py`, contained in src. `startup.sh` should create a Python environment and install any necessary packages before running the program using bash. Our custom modules for this program are split among minimizer, parser, and verilate. 
 
-- **Minimizer** contains modules for circuit representation of logic as well as various methods of minimizing logic such as QM. 
+- **logicDAG / sopMIN** contains modules for circuit representation of logic as well as various methods of minimizing logic such as QM. 
 
-- **Parser** contains modules to parse constrained BLIF files. 
+- **blifParser** contains modules to parse constrained BLIF files. 
 
-- **Verilate** contains conversion from circuit representation to structural Verilog.
+- **verilate** contains conversion from circuit representation to structural Verilog.
 
 ----------------------------------------------------------------------------------------
 
