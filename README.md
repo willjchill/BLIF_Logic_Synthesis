@@ -94,6 +94,18 @@ B. Generate structural Verilog and simulation testbench files organized under `o
 
 These metrics will be output to a file called `output/metrics/metrics_<model>_<timestamp>.txt`. 
 
+### 2.3.1. Logic Minimization
+
+The canonical SOP and POS expressions can have a lot of terms, so we use the Quine-McCluskey (QM) algorithm to simplify them. The minimization code is in `src/utils/sopMin.py`.
+
+For SOP, we start with the ON-set minterms and combine binary terms that differ by one bit. The bit that changes is replaced with `-`, meaning that input does not matter for that term. We repeat this until no more terms can be combined. The remaining terms are the prime implicants. Essential prime implicants are the ones that are needed to cover a minterm that no other prime implicant covers.
+
+After taking the essential prime implicants, we find a set of the remaining prime implicants that covers the rest of the ON-set. If there are multiple ways to cover it, we choose the one with the lowest literal count, breaking ties by the number of terms. The minimizer also accepts optional don't-care minterms.
+
+For POS, we run SOP minimization on the OFF-set (the inverse function) and use De Morgan's law to write it as POS. `logicDAG.py` stores the minimized SOP/POS forms and reports how many literals were saved compared with the canonical forms. `verilate.py` uses the minimized SOP to generate the structural Verilog. The generated testbench still compares the outputs against the original canonical SOP.
+
+For example, the full-adder carry output can be reduced to `ab + acin + bcin`, which uses 6 literals instead of 12 in the canonical SOP.
+
 ### 2.4. Simulation & Waveform Verification
 
 To simulate the synthesized design and view waveforms in GTKWave:
@@ -189,6 +201,9 @@ The main script to run the program is `synth.py`, contained in src. It uses only
 
 ----------------------------------------------------------------------------------------
 
-Last Updated 10/7/2026
+### AI Usage
+
+AI tools were used to aid in debugging and understanding the materials better. All written codes are our own with no AI generation or aids.
+Last Updated 10/20/2026
 
 **Based off of Boston University's EC551 - Programming Assignment 1**
