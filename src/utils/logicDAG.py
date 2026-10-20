@@ -3,8 +3,10 @@ from pathlib import Path
 
 try:
     import utils.blifParser as blifParser
+    import utils.sopMin as sopMin
 except ImportError:
     import blifParser
+    import sopMin
 
 # DAG connecting all of gates / modules in ckt
 class TopCktDAG(object):
@@ -32,7 +34,9 @@ class TopCktDAG(object):
                                  "Prime Implicants": [],
                                  "Essential Prime Implicants": [],
                                  "ON-Set Minterms": 0,
-                                 "OFF-Set Maxterms": 0
+                                 "OFF-Set Maxterms": 0,
+                                 "SOP Literals Saved": 0,
+                                 "POS Literals Saved": 0
                                  } for output in self.outputs}
 
     """
@@ -80,7 +84,9 @@ class TopCktDAG(object):
                                  "Prime Implicants": [],
                                  "Essential Prime Implicants": [],
                                  "ON-Set Minterms": 0,
-                                 "OFF-Set Maxterms": 0
+                                 "OFF-Set Maxterms": 0,
+                                 "SOP Literals Saved": 0,
+                                 "POS Literals Saved": 0
                                  } for output in self.outputs}
 
         self.nodes = []
@@ -125,6 +131,16 @@ class TopCktDAG(object):
             self.metrics[output]["ON-Set Minterms"] = len(self.metrics[output]["Canonical SOP"])
             self.metrics[output]["OFF-Set Maxterms"] = len(self.metrics[output]["Canonical POS"])
 
+            onSet = self.metrics[output]["Canonical SOP"]
+            offSet = self.metrics[output]["Canonical POS"]
+            primes = sopMin.quineMcCluskey(onSet, bitWidth)
+            self.metrics[output]["Prime Implicants"] = primes
+            self.metrics[output]["Essential Prime Implicants"] = sopMin.essentialPrimeImplicants(primes, onSet)
+            self.metrics[output]["Literal Minimized SOP"] = sopMin.minimizeSOP(onSet, bitWidth)
+            self.metrics[output]["Literal Minimized POS"] = sopMin.minimizePOS(offSet, bitWidth)
+            self.metrics[output]["SOP Literals Saved"] = bitWidth * len(onSet) - sopMin.literalCount(self.metrics[output]["Literal Minimized SOP"])
+            self.metrics[output]["POS Literals Saved"] = bitWidth * len(offSet) - sopMin.literalCount(self.metrics[output]["Literal Minimized POS"])
+
     """
         Computes logic depth (number of gate levels) from inputs to each output
     """
@@ -152,6 +168,8 @@ class TopCktDAG(object):
     def _formatSOPExpr(self, terms: list[str]) -> str:
         if not terms:
             return "0"
+        if any(all(bit == "-" for bit in m) for m in terms):
+            return "1"
         if len(terms) == (1 << len(self.inputs)):
             return "1"
         prod_list = []
@@ -171,6 +189,8 @@ class TopCktDAG(object):
     def _formatPOSExpr(self, terms: list[str]) -> str:
         if not terms:
             return "1"
+        if any(all(bit == "-" for bit in m) for m in terms):
+            return "0"
         if len(terms) == (1 << len(self.inputs)):
             return "0"
         sum_list = []
@@ -210,12 +230,12 @@ class TopCktDAG(object):
             lines.append(f"    Minterms (binary):          {m['Inverse Canonical SOP']}")
             lines.append(f"4.  Inverse Canonical POS:      {self._formatPOSExpr(m['Inverse Canonical POS'])}")
             lines.append(f"    Maxterms (binary):          {m['Inverse Canonical POS']}")
-            lines.append(f"5.  Literal Minimized SOP:      Not implemented (minimization disabled)")
-            lines.append(f"    Literals saved vs canonical: 0")
-            lines.append(f"6.  Literal Minimized POS:      Not implemented (minimization disabled)")
-            lines.append(f"    Literals saved vs canonical: 0")
-            lines.append(f"7.  Prime Implicants:           Not implemented (minimization disabled)")
-            lines.append(f"8.  Essential Prime Implicants: Not implemented (minimization disabled)")
+            lines.append(f"5.  Literal Minimized SOP:      {self._formatSOPExpr(m['Literal Minimized SOP'])}")
+            lines.append(f"    Literals saved vs canonical: {m['SOP Literals Saved']}")
+            lines.append(f"6.  Literal Minimized POS:      {self._formatPOSExpr(m['Literal Minimized POS'])}")
+            lines.append(f"    Literals saved vs canonical: {m['POS Literals Saved']}")
+            lines.append(f"7.  Prime Implicants:           {len(m['Prime Implicants'])}")
+            lines.append(f"8.  Essential Prime Implicants: {len(m['Essential Prime Implicants'])}")
             lines.append(f"9.  ON-Set Minterms (Sigma m):  {m['ON-Set Minterms']}")
             lines.append(f"10. OFF-Set Maxterms (Pi M):    {m['OFF-Set Maxterms']}")
             lines.append(f"11. Custom Command #1 (Delay):  Logic depth = {depths.get(out, 0)} levels")

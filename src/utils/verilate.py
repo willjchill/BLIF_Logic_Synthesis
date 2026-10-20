@@ -94,7 +94,7 @@ def generateVerilog(inputs: list[str], outputs: list[str], metrics: dict, module
     lines.append("")
 
     for out in outputs:
-        minterms = metrics[out]["Canonical SOP"]
+        minterms = metrics[out]["Literal Minimized SOP"]
         gate_lines = sopToVerilogGates(out, inputs, minterms)
         lines.extend(gate_lines)
         lines.append("")
