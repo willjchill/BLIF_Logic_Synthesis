@@ -119,6 +119,8 @@ gtkwave tb_top_<timestamp>.vcd
 
 ### 2.5. Vivado FPGA Synthesis, Implementation & Bitstream
 
+For PHO115 lab computers, use `C:\Xilinx\Vivado\2024.1\bin\vivado.bat` instead of `vivado` in Windows Powershell to avoid alias or PATH issues.
+
 To automatically synthesize, implement, generate bitstream, and program the design onto a Xilinx Artix-7 FPGA (`xc7a100tcsg324-1` on Digilent Nexys 4 DDR), use `vivadoSynth.tcl`:
 
 ```bash
@@ -203,7 +205,7 @@ The main script to run the program is `synth.py`, contained in src. It uses only
 
 ### AI Usage
 
-AI tools were used to aid in debugging and understanding the materials better. All written codes are our own with no AI generation or aids.
+AI tools were used to aid in debugging and understanding the materials better. AI used to write tcl scripts to automatically synthesize, implement, and upload bitstream on FPGA. All written codes are our own with no AI generation or aids.
 Last Updated 10/20/2026
 
 **Based off of Boston University's EC551 - Programming Assignment 1**
