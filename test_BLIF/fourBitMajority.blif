@@ -1,0 +1,11 @@
+.model fourBitMajority
+.inputs a b c d
+.outputs y
+
+.names a b c d y
+-111 1
+1-11 1
+11-1 1
+111- 1
+
+.end
