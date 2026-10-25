@@ -1,0 +1,11 @@
+.model mux2to1
+.inputs sel d0 d1
+.outputs y
+
+.names sel d0 d1 y
+010 1
+011 1
+101 1
+111 1
+
+.end
